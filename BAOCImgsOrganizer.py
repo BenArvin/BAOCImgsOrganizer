@@ -39,7 +39,7 @@ class BAOCImgsOrganizer(object):
 		else:
 			return False
 
-	def __handleImageSetFolder(self, rootDir, currentDir, targetDir, namePathsDic):
+	def __handleImageSetFolder(self, rootDir, currentDir, targetDir, namePathsDic, onlyCheck):
 		currentPathName = os.path.basename(currentDir)
 		currentPathSuffix = self.__getFileSuffix(currentPathName)
 		if currentPathSuffix != ".imageset":
@@ -98,6 +98,9 @@ class BAOCImgsOrganizer(object):
 				elif imgScale == "1x":
 					imgName1x = imgFileName
 		
+		if onlyCheck == True:
+			return False
+
 		baseImgFileName = None
 		if imgName3x != None:
 			baseImgFileName = imgName3x
@@ -165,35 +168,38 @@ class BAOCImgsOrganizer(object):
 		newFileHandler.close()
 		return False
 
-	def __organizeAction(self, rootDir, currentDir, targetDir, namePathsDic):
+	def __organizeAction(self, rootDir, currentDir, targetDir, namePathsDic, onlyCheck):
 		targetImageSetDir = os.path.join(targetDir, currentDir[len(rootDir) + 1 : len(currentDir)])
 		needFullCopy = False
 		if self.__needSkipFolder(currentDir) == False:
-			needFullCopy = self.__handleImageSetFolder(rootDir, currentDir, targetDir, namePathsDic)
+			needFullCopy = self.__handleImageSetFolder(rootDir, currentDir, targetDir, namePathsDic, onlyCheck)
 
 			for fileName in os.listdir(currentDir):
 				filePath = os.path.join(currentDir, fileName)
 				fileSuffix = self.__getFileSuffix(fileName)
 				if (os.path.isdir(filePath)):
-					self.__organizeAction(rootDir, filePath, targetDir, namePathsDic)
+					self.__organizeAction(rootDir, filePath, targetDir, namePathsDic, onlyCheck)
 		else:
 			consoleLog(None, "Skip " + currentDir)
 			needFullCopy = True
 
-		if needFullCopy == True and (os.path.exists(targetImageSetDir) == False or os.path.isdir(targetImageSetDir) == False):
+		if onlyCheck == False and needFullCopy == True and (os.path.exists(targetImageSetDir) == False or os.path.isdir(targetImageSetDir) == False):
 			shutil.copytree(currentDir, targetImageSetDir)
 
-	def startOrganize(self, sourceDir, targetDir):
+	def startOrganize(self, sourceDir, targetDir, onlyCheck):
 		consoleLog(None, "👉  Organize action, here we go!")
 
 		namePathsDic = {}
-		self.__organizeAction(sourceDir, sourceDir, targetDir, namePathsDic)
+		self.__organizeAction(sourceDir, sourceDir, targetDir, namePathsDic, onlyCheck)
 		for key, paths in namePathsDic.items():
 			if len(paths) > 1:
 				consoleLog("Error", "🚫 Imageset repeated! " + key + ":")
 				for pathItem in paths:
 					consoleLog("Error", "    " + pathItem)
-		consoleLog(None, "✌️  Finished!")
+		if onlyCheck == True:
+			consoleLog(None, "✌️  Finished!")
+		else:
+			consoleLog(None, "✌️  Finished! Output: " + str(targetDir))
 	
 	def __extractAction(self, currentDir, targetDir):
 		if self.__needSkipFolder(currentDir) == True:
@@ -205,7 +211,10 @@ class BAOCImgsOrganizer(object):
 			else:
 				fileSuffix = self.__getFileSuffix(fileName)
 				if fileSuffix == '.png' or fileSuffix == '.jpg':
-					shutil.copyfile(filePath, os.path.join(targetDir, fileName))
+					targetPath = os.path.join(targetDir, fileName)
+					if os.path.exists(targetPath) == True and os.path.isdir(targetPath) == False:
+						consoleLog("Error", "🚫 Image repeated! " + str(fileName))
+					shutil.copyfile(filePath, targetPath)
 
 	def startExtract(self, sourceDir, targetDir):
 		consoleLog(None, "👉  Extract action, here we go!")
@@ -213,31 +222,41 @@ class BAOCImgsOrganizer(object):
 		self.__extractAction(sourceDir, targetDir)
 		consoleLog(None, "✌️  Finished!")
 
+def checkTargetDir(dirPath):
+	if os.path.exists(dirPath) == True and os.path.isdir(dirPath) == True:
+		nextStep = input("️Target directory already existed, remove and continue?(Y/N)")
+		if nextStep == 'Y' or nextStep == 'y' or nextStep == 'YES' or nextStep == 'yes':
+			shutil.rmtree(targetDir)
+			return True
+		else:
+			return False
+	else:
+		return True
+
 if __name__ == '__main__':
-	if len(sys.argv) < 2:
+	if len(sys.argv) < 3:
 		quit()
 	action = sys.argv[1]
-	if action != '-organize' and action != '-extract' and action != '-o' and action != '-e':
-		quit()
-	if len(sys.argv) < 4:
-		quit()
 	sourceDir = sys.argv[2]
-	targetDir = sys.argv[3]
 
 	if os.path.exists(sourceDir) == False or os.path.isdir(sourceDir) == False:
 		consoleLog("Warning", '⚠️  Source directory path invalid!')
 		quit()
 
-	if os.path.exists(targetDir) == True and os.path.isdir(targetDir) == True:
-		nextStep = input("️Target directory already existed, remove and continue?(Y/N)")
-		if nextStep == 'Y' or nextStep == 'y' or nextStep == 'YES' or nextStep == 'yes':
-			shutil.rmtree(targetDir)
-		else:
+	if action == '-check' or action == '-c':
+		organizer = BAOCImgsOrganizer()
+		organizer.startOrganize(sourceDir, "", True)
+	elif action == '-organize' or action == '-o':
+		if len(sys.argv) < 4:
 			quit()
-
-	if action == '-organize' or action == '-o':
-		organizer = BAOCImgsOrganizer()
-		organizer.startOrganize(sourceDir, targetDir)
+		targetDir = sys.argv[3]
+		if checkTargetDir(targetDir) == True:
+			organizer = BAOCImgsOrganizer()
+			organizer.startOrganize(sourceDir, targetDir, False)
 	elif action == '-extract' or action == '-e':
-		organizer = BAOCImgsOrganizer()
-		organizer.startExtract(sourceDir, targetDir)
+		if len(sys.argv) < 4:
+			quit()
+		targetDir = sys.argv[3]
+		if checkTargetDir(targetDir) == True:
+			organizer = BAOCImgsOrganizer()
+			organizer.startExtract(sourceDir, targetDir)

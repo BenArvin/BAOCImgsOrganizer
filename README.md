@@ -10,10 +10,14 @@ iOS工程Image Assets规范化工具
 - 一键提取所有图片文件
 
 使用:
-1. python -o/-organize sourthPath targetPath
+1. python -c/-check sourthPath
+
+    仅检查所有Image set
+
+2. python -o/-organize sourthPath targetPath
 
     检查、规范化所有Image set，并输出至目标文件夹
 
-2. python -e/-extract sourthPath targetPath
+3. python -e/-extract sourthPath targetPath
 
     一键提取所有图片文件至目标文件夹
