@@ -87,9 +87,9 @@ class BAOCImgsOrganizer(object):
 				imgFileName = imgItem["filename"]
 			imgScale = imgItem["scale"]
 			if imgFileName == None:
-				consoleLog("Warning", "⚠️  Can't find filename record for " + str(imgScale) + " " + currentDir)
+				consoleLog("Warning", "⚠️  Can't find " + str(imgScale) + " record: " + currentDir)
 			elif os.path.exists(os.path.join(currentDir, imgFileName)) == False or os.path.isdir(os.path.join(currentDir, imgFileName)) == True:
-				consoleLog("Warning", "⚠️  Can't find image file for " + str(imgScale) + " " + currentDir)
+				consoleLog("Warning", "⚠️  Can't find " + str(imgScale) + " image file: " + currentDir)
 			else :
 				if imgScale == "3x":
 					imgName3x = imgFileName
